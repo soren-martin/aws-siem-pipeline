@@ -1,0 +1,23 @@
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (if you experiment with JS tools)
+node_modules/
+
+# Terraform/CLI creds (if you add IaC later—store state remotely, not here)
+.terraform/
+terraform.tfstate*
+*.tfvars
+
+# Secrets & env
+.env
+*.key
+*.pem
