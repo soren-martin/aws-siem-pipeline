@@ -1,0 +1,82 @@
+{
+  "id": "AWS_Console_Login_NoMFA",
+  "title": "AWS Console Login Without MFA",
+  "description": "Detects AWS Management Console logins where MFA was not used. All IAM users and the root account should require MFA.",
+  "status": "experimental",
+  "severity": "high",
+
+  "log_source": {
+    "product": "aws",
+    "service": "cloudtrail",
+    "dataset": "management"
+  },
+
+  "detection": {
+    "logic_type": "match",
+    "where": {
+      "equals": { "eventName": "ConsoleLogin" },
+      "and_equals": { "userIdentity.sessionContext.attributes.mfaAuthenticated": "false" }
+    },
+    "notes": "Focuses on interactive console logins. Excludes API calls. If you want to broaden coverage, consider API sessions lacking MFA enforcement."
+  },
+
+  "context_fields": [
+    "eventTime",
+    "userIdentity.arn",
+    "sourceIPAddress",
+    "userAgent",
+    "awsRegion",
+    "responseElements.ConsoleLogin"
+  ],
+
+  "noise_reduction": {
+    "caveats": [
+      "Some service accounts may not be MFA-capable (investigate rather than suppress).",
+      "If SSO or federated IdPs are used, MFA may be enforced upstream and not visible here."
+    ]
+  },
+
+  "response_recommendations": [
+    "Contact the user immediately to confirm legitimacy.",
+    "Require the user to enable MFA before next login.",
+    "Audit IAM policies and recent actions from this user.",
+    "Consider temporarily disabling non-MFA accounts."
+  ],
+
+  "mitre_attack": [
+    { "tactic": "Initial Access", "technique": "Valid Accounts", "id": "T1078" }
+  ],
+
+  "false_positives": [
+    "Federated logins where MFA is enforced outside AWS but not reflected in CloudTrail."
+  ],
+
+  "validation": {
+    "test_plan": [
+      "1) Create a test IAM user without MFA.",
+      "2) Sign in to the console with this user.",
+      "3) Query CloudTrail logs and confirm an event with eventName='ConsoleLogin' and mfaAuthenticated='false'.",
+      "4) Verify the detection matches and alert context includes user ARN and source IP."
+    ],
+    "sample_event": {
+      "eventName": "ConsoleLogin",
+      "userIdentity": {
+        "arn": "arn:aws:iam::123456789012:user/testUser",
+        "sessionContext": {
+          "attributes": { "mfaAuthenticated": "false" }
+        }
+      },
+      "eventTime": "2025-08-24T18:00:00Z",
+      "sourceIPAddress": "198.51.100.23",
+      "userAgent": "Mozilla/5.0",
+      "awsRegion": "us-east-1",
+      "responseElements": { "ConsoleLogin": "Success" }
+    }
+  },
+
+  "version": 1,
+  "tags": ["AWS", "CloudTrail", "MFA", "DetectionEngineering"],
+  "references": [
+    "CIS AWS Benchmark: Ensure MFA is enabled for all IAM users that have a console password"
+  ]
+}
