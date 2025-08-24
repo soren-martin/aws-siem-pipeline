@@ -1,0 +1,91 @@
+{
+  "id": "AWS_RootAccount_Usage",
+  "title": "AWS Root Account Activity Detected",
+  "description": "Detects any activity performed by the AWS account root user. Root usage should be rare and tightly controlled; any occurrence merits immediate review.",
+  "status": "experimental",
+  "severity": "high",
+
+  "log_source": {
+    "product": "aws",
+    "service": "cloudtrail",
+    "dataset": "management"
+  },
+
+  "detection": {
+    "logic_type": "match",
+    "where": {
+      "equals": { "userIdentity.type": "Root" }
+    },
+    "notes": "Deliberately broad: catches ConsoleLogin and API calls by root. Use eventName for context, not filtering, unless your environment is noisy."
+  },
+
+  "context_fields": [
+    "eventTime",
+    "eventName",
+    "eventSource",
+    "awsRegion",
+    "sourceIPAddress",
+    "userAgent",
+    "responseElements",
+    "userIdentity.accountId",
+    "userIdentity.sessionContext.attributes.mfaAuthenticated"
+  ],
+
+  "noise_reduction": {
+    "suppress_examples": [
+      {
+        "reason": "Known automated root login during initial account bootstrap (time‑boxed)",
+        "window": "2025-08-24T00:00:00Z/2025-08-31T23:59:59Z"
+      }
+    ],
+    "caveats": [
+      "If your account uses root for billing/profile tasks, expect ConsoleLogin without API calls.",
+      "Prefer creating a break‑glass role with MFA instead of using root."
+    ]
+  },
+
+  "response_recommendations": [
+    "Immediately verify the actor and intent.",
+    "Confirm MFA status for the session.",
+    "Review recent root events (last 24–72h).",
+    "Rotate access keys if any exist for root (ideally none should).",
+    "Consider temporarily restricting critical APIs via SCP or emergency guardrails."
+  ],
+
+  "mitre_attack": [
+    { "tactic": "Initial Access", "technique": "Valid Accounts", "id": "T1078" }
+  ],
+
+  "false_positives": [
+    "One‑time initial account setup by the owner",
+    "Rare vendor‑guided support session explicitly requiring root (should be documented)"
+  ],
+
+  "validation": {
+    "test_plan": [
+      "1) Log in once with the root user (for testing only).",
+      "2) Ingest CloudTrail into your SIEM or query via Athena.",
+      "3) Confirm an event with userIdentity.type = 'Root' is matched.",
+      "4) Verify alert context shows eventName, source IP, MFA."
+    ],
+    "sample_event": {
+      "userIdentity": {
+        "type": "Root",
+        "sessionContext": {
+          "attributes": { "mfaAuthenticated": "false" }
+        }
+      },
+      "eventName": "ConsoleLogin",
+      "eventSource": "signin.amazonaws.com",
+      "sourceIPAddress": "203.0.113.5",
+      "awsRegion": "us-east-1",
+      "eventTime": "2025-08-24T15:01:05Z"
+    }
+  },
+
+  "version": 1,
+  "tags": ["AWS", "CloudTrail", "Root", "Privilege", "DetectionEngineering"],
+  "references": [
+    "CIS AWS Benchmark: Avoid using the root account; enable MFA on root"
+  ]
+}
